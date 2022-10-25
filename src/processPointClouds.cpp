@@ -24,12 +24,32 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud(ty
     auto startTime = std::chrono::steady_clock::now();
 
     // TODO:: Fill in the function to do voxel grid point reduction and region based filtering
+    typename pcl::PointCloud<PointT>::Ptr filteredCloud(new pcl::PointCloud<PointT>());
+    typename pcl::VoxelGrid<PointT> voxelFilter;
+    voxelFilter.setInputCloud(cloud);
+    voxelFilter.setLeafSize(filterRes, filterRes, filterRes);
+    voxelFilter.filter(*filteredCloud);
+
+    typename pcl::PointCloud<PointT>::Ptr regionCloud(new pcl::PointCloud<PointT>());
+    typename pcl::CropBox<PointT> region(true);
+    region.setMin(minPoint);
+    region.setMax(maxPoint);
+    region.setInputCloud(filteredCloud);
+    region.filter(*regionCloud);
+
+    typename pcl::PointCloud<PointT>::Ptr noRoofCloud(new pcl::PointCloud<PointT>());
+    typename pcl::CropBox<PointT> roof(true);
+    roof.setMin(Eigen::Vector4f(-1.5f, -1.7f, -1.0f, 1.0f));
+    roof.setMax(Eigen::Vector4f(2.6f, 1.7f, -0.4f, 1.0f));
+    roof.setInputCloud(regionCloud);
+    roof.setNegative(true); // removing the points inside the box
+    roof.filter(*noRoofCloud);
 
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     std::cout << "filtering took " << elapsedTime.count() << " milliseconds" << std::endl;
 
-    return cloud;
+    return noRoofCloud;
 }
 
 template <typename PointT>
