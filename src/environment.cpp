@@ -1,5 +1,5 @@
 /* \author Aaron Brown */
-// Create simple 3d highway enviroment using PCL
+// Create simple 3d highway environment using PCL
 // for exploring self-driving car sensors
 
 #include "sensors/lidar.h"
@@ -82,13 +82,34 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr &viewer)
 
 void cityBlock(pcl::visualization::PCLVisualizer::Ptr &viewer)
 {
+    // Create point processor
+    // creating the obj on the heap
     ProcessPointClouds<pcl::PointXYZI> *pointProcessorI = new ProcessPointClouds<pcl::PointXYZI>();
     pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = pointProcessorI->loadPcd("../src/sensors/data/pcd/data_1/0000000000.pcd");
 
-    Eigen::Vector4f minPoint(-10.0f, -10.0f, -2.0f, 0.0f);
-    Eigen::Vector4f maxPoint(20.0f, 10.0f, 2.0f, 0.0f);
+    Eigen::Vector4f minPoint(-10.0f, -6.0f, -2.0f, 0.0f);
+    Eigen::Vector4f maxPoint(18.0f, 6.5f, 2.0f, 0.0f);
     pcl::PointCloud<pcl::PointXYZI>::Ptr filteredCloud = pointProcessorI->FilterCloud(inputCloud, 0.1f, minPoint, maxPoint);
-    renderPointCloud(viewer, filteredCloud, "filteredCloud");
+    // renderPointCloud(viewer, filteredCloud, "filteredCloud");
+
+    std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr, pcl::PointCloud<pcl::PointXYZI>::Ptr> segmentCloud = pointProcessorI->SegmentPlane(filteredCloud, 100, 0.2);
+    renderPointCloud(viewer, segmentCloud.second, "planeClouds", Color(0, 1, 0));
+
+    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClusters = pointProcessorI->Clustering(segmentCloud.first, 0.5, 10, 100000);
+    int clusterId = 0;
+    std::vector<Color> colors = {Color(1, 0, 0), Color(1, 0.9, 0), Color(0, 0.2, 1)};
+
+    for (pcl::PointCloud<pcl::PointXYZI>::Ptr cluster : cloudClusters)
+    {
+        std::cout << "cluster size ";
+        pointProcessorI->numPoints(cluster);
+        renderPointCloud(viewer, cluster, "obstCloud" + std::to_string(clusterId), colors[clusterId % 3]);
+
+        Box box = pointProcessorI->BoundingBox(cluster);
+        renderBox(viewer, box, clusterId, colors[clusterId % 3], 0.2);
+
+        ++clusterId;
+    }
 }
 
 // setAngle: SWITCH CAMERA ANGLE {XY, TopDown, Side, FPS}
