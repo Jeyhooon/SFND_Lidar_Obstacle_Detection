@@ -6,6 +6,7 @@
 #include "../../processPointClouds.h"
 // using templates for processPointClouds so also include .cpp to help linker
 #include "../../processPointClouds.cpp"
+#include "ransac2d.h"
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr CreateData()
 {
@@ -108,7 +109,8 @@ std::unordered_set<int> RansacLine(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, in
 	return inliersResult;
 }
 
-std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int maxIterations, float distanceTol)
+template <typename PointT>
+typename std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointT>::Ptr cloud, int maxIterations, float distanceTol)
 {
 	std::unordered_set<int> inliersResult;
 	srand(time(NULL));
@@ -119,13 +121,13 @@ std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, i
 	while (maxIterations--)
 	{
 		// Randomly sample subset (three points) and fit plane
-		std::unordered_set<int> inliers; // set only contains unique elements! :)
+		std::unordered_set<int> inliers; // set only contains unique elements!
 		while (inliers.size() < 3)
 			inliers.insert(rand() % (cloud->points.size()));
 
 		float x1, y1, z1, x2, y2, z2, x3, y3, z3;
 
-		auto itr = inliers.begin(); // returns a iterator pointer to the begining of the inliers (access its value by de-referencing)
+		auto itr = inliers.begin(); // returns a iterator pointer to the beginning of the inliers (access its value by de-referencing)
 		x1 = cloud->points[*itr].x;
 		y1 = cloud->points[*itr].y;
 		z1 = cloud->points[*itr].z;
@@ -162,7 +164,7 @@ std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, i
 			inliersResult = inliers;
 	}
 
-	// Return indicies of inliers from fitted line with most inliers
+	// Return indicies of inliers from fitted plane with most inliers
 	return inliersResult;
 }
 
