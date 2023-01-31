@@ -1,20 +1,22 @@
 {
-  "configurations": [
-    {
-      "name": "Linux",
-      "includePath": [
-        "${workspaceFolder}/**",
-        "/usr/include",
-        "/usr/include/pcl-1.10",
-        "/usr/include/eigen3"
-      ],
-      "defines": [],
-      "compilerPath": "/usr/bin/gcc",
-      "cStandard": "gnu17",
-      "cppStandard": "gnu++14",
-      "intelliSenseMode": "linux-gcc-x64",
-      "configurationProvider": "ms-vscode.cmake-tools"
-    }
-  ],
-  "version": 4
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/include",
+                "/usr/include/pcl-1.10",
+                "/usr/include/eigen3",
+                "/usr/local/include/opencv4",
+                "/home/mak5rt/git/opencv"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "linux-gcc-x64",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
 }
