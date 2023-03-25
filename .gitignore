@@ -1,4 +1,5 @@
 build/*
+.vscode/*
 
 src/quiz/TTC_camera/exercise/build/cmake_install.cmake
 src/quiz/TTC_camera/exercise/build/CMakeCache.txt
