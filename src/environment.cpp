@@ -2,11 +2,73 @@
 // Create simple 3d highway environment using PCL
 // for exploring self-driving car sensors
 
+#include <unordered_set>
 #include "sensors/lidar.h"
 #include "render/render.h"
 #include "processPointClouds.h"
 #include "processPointClouds.cpp"
+#include "kd_tree.h"
+#include "helper_func.h"
+
 // using templates for processPointClouds so also include .cpp to help linker
+template<typename PointT>
+typename std::unordered_set<int> RansacPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
+{
+	std::unordered_set<int> inliersResult;
+	srand(time(NULL));
+
+	// TODO: Fill in this function
+
+	// For max iterations
+	while (maxIterations--)
+	{
+		// Randomly sample subset (three points) and fit plane
+		std::unordered_set<int> inliers; // set only contains unique elements!
+		while (inliers.size() < 3)
+			inliers.insert(rand() % (cloud->points.size()));
+
+		float x1, y1, z1, x2, y2, z2, x3, y3, z3;
+
+		auto itr = inliers.begin(); // returns a iterator pointer to the beginning of the inliers (access its value by de-referencing)
+		x1 = cloud->points[*itr].x;
+		y1 = cloud->points[*itr].y;
+		z1 = cloud->points[*itr].z;
+		itr++;
+		x2 = cloud->points[*itr].x;
+		y2 = cloud->points[*itr].y;
+		z2 = cloud->points[*itr].z;
+		itr++;
+		x3 = cloud->points[*itr].x;
+		y3 = cloud->points[*itr].y;
+		z3 = cloud->points[*itr].z;
+
+		float a = (y2 - y1) * (z3 - z1) - (z2 - z1) * (y3 - y1);
+		float b = (x3 - x1) * (z2 - z1) - (x2 - x1) * (z3 - z1);
+		float c = (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1);
+		float d = -(a * x1 + b * y1 + c * z1);
+
+		for (int index = 0; index < cloud->points.size(); index++)
+		{
+			if (inliers.count(index) > 0) // if index exists in the set; then skip
+				continue;
+
+			pcl::PointXYZ point = cloud->points[index];
+			float x0 = point.x;
+			float y0 = point.y;
+			float z0 = point.z;
+
+			float dist = fabs(a * x0 + b * y0 + c * z0 + d) / sqrt(a * a + b * b + c * c); // be careful to use float abs: fabs()
+			if (dist <= distanceTol)
+				inliers.insert(index);
+		}
+
+		if (inliers.size() > inliersResult.size())
+			inliersResult = inliers;
+	}
+
+	// Return indicies of inliers from fitted plane with most inliers
+	return inliersResult;
+}
 
 std::vector<Car> initHighway(bool renderScene, pcl::visualization::PCLVisualizer::Ptr &viewer)
 {
@@ -51,34 +113,65 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr &viewer)
     // renderPointCloud(viewer, inputClouds, "input_clouds");
 
     // TODO:: Create point processor
-
     // creating the obj on the stack
     // ProcessPointClouds<pcl::PointXYZ> pointProcessorStack;
     // std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmentCloud = pointProcessorStack.SegmentPlane(inputClouds, 100, 0.2);
-
     // creating the obj on the heap
-    ProcessPointClouds<pcl::PointXYZ> *pointProcessorHeap = new ProcessPointClouds<pcl::PointXYZ>();
-    std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmentCloud = pointProcessorHeap->SegmentPlane(inputClouds, 100, 0.2);
+    // ProcessPointClouds<pcl::PointXYZ> *pointProcessorHeap = new ProcessPointClouds<pcl::PointXYZ>();
+    // std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmentCloud = pointProcessorHeap->SegmentPlane(inputClouds, 100, 0.2);
+    
+    // TODO: Use segmentation from Quiz (developed ourselves using 3D kdtree)
+    std::unordered_set<int> inliers = RansacPlane<pcl::PointXYZ>(inputClouds, 100, 0.2f);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr planeCloud(new pcl::PointCloud<pcl::PointXYZ>());
+	pcl::PointCloud<pcl::PointXYZ>::Ptr obstacleCloud(new pcl::PointCloud<pcl::PointXYZ>());
+
+    KdTree *tree = new KdTree;
+    for (int index = 0; index < inputClouds->points.size(); index++)
+	{
+		pcl::PointXYZ point = inputClouds->points[index];
+		if (inliers.count(index))
+			planeCloud->points.push_back(point);
+		else
+			obstacleCloud->points.push_back(point);
+            tree->insert(point, index);
+	}
 
     // renderPointCloud(viewer, segmentCloud.first, "obstClouds", Color(1, 0, 0));
-    renderPointCloud(viewer, segmentCloud.second, "planeClouds", Color(0, 1, 0));
+    renderPointCloud(viewer, planeCloud, "planeClouds", Color(0, 1, 0));
 
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudClusters = pointProcessorHeap->Clustering(segmentCloud.first, 1.0, 3, 30);
+    // TODO: use clustering from Quiz (developed ourselves)
+    // std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudClusters = pointProcessorHeap->Clustering(obstacleCloud, 1.0, 3, 30);
+    std::vector<std::vector<int>> clusters = euclideanCluster(obstacleCloud, tree, 1.0);
+    std::cout << "clustering found " << clusters.size() << endl;
+    
     int clusterId = 0;
     std::vector<Color> colors = {Color(1, 0, 0), Color(1, 0.9, 0), Color(0, 0.2, 1)};
     int num_colors = colors.size();
 
-    for (pcl::PointCloud<pcl::PointXYZ>::Ptr cluster : cloudClusters)
-    {
-        std::cout << "cluster size ";
-        pointProcessorHeap->numPoints(cluster);
-        renderPointCloud(viewer, cluster, "obstCloud" + std::to_string(clusterId), colors[clusterId % num_colors]);
+    for (std::vector<int> cluster : clusters)
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr clusterCloud(new pcl::PointCloud<pcl::PointXYZ>());
+		for (int indice : cluster)
+			clusterCloud->points.push_back(obstacleCloud->points[indice]);
+		
+        renderPointCloud(viewer, clusterCloud, "cluster" + std::to_string(clusterId), colors[clusterId % 3]);
 
-        Box box = pointProcessorHeap->BoundingBox(cluster);
+        Box box = bounding_box(clusterCloud);
         renderBox(viewer, box, clusterId, colors[clusterId % num_colors], 0.2);
 
-        ++clusterId;
-    }
+		++clusterId;
+	}
+    
+    // USING pointProcessorHeap OBJECT:
+    // for (pcl::PointCloud<pcl::PointXYZ>::Ptr cluster : cloudClusters)
+    // {
+    //     std::cout << "cluster size ";
+    //     pointProcessorHeap->numPoints(cluster);
+    //     renderPointCloud(viewer, cluster, "obstCloud" + std::to_string(clusterId), colors[clusterId % num_colors]);
+    //     Box box = pointProcessorHeap->BoundingBox(cluster);
+    //     renderBox(viewer, box, clusterId, colors[clusterId % num_colors], 0.2);
+    //     ++clusterId;
+    // }
 }
 
 void cityBlock(pcl::visualization::PCLVisualizer::Ptr &viewer, ProcessPointClouds<pcl::PointXYZI> *pointProcessor, const pcl::PointCloud<pcl::PointXYZI>::Ptr &inputCloud)
@@ -173,6 +266,6 @@ int main(int argc, char **argv)
         if (streamIterator == stream.end())
             streamIterator = stream.begin();
 
-        viewer->spinOnce();
+        viewer->spinOnce(100);
     }
 }

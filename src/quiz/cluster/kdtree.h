@@ -81,10 +81,12 @@ struct KdTree
 	{
 		if (head != NULL)
 		{
-			if ((target[0] - distanceTol <= head->point[0]) && (head->point[0] <= target[0] + distanceTol) && (target[1] - distanceTol <= head->point[1]) && (head->point[1] <= target[1] + distanceTol))
+			if ((target[0] - distanceTol <= head->point[0]) && (head->point[0] <= target[0] + distanceTol) && 
+			    (target[1] - distanceTol <= head->point[1]) && (head->point[1] <= target[1] + distanceTol))
 			{
 				// inside box:
-				float distance = sqrt((head->point[0] - target[0]) * (head->point[0] - target[0]) + (head->point[1] - target[1]) * (head->point[1] - target[1]));
+				float distance = sqrt((head->point[0] - target[0]) * (head->point[0] - target[0]) + 
+				                      (head->point[1] - target[1]) * (head->point[1] - target[1]));
 				if (distance < distanceTol)
 					ids.push_back(head->id);
 			}
