@@ -13,6 +13,6 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 link_directories(${OpenCV_LIBRARY_DIRS})
 add_definitions(${OpenCV_DEFINITIONS})
 
-# Executable for create matrix exercise
-add_executable (compute_ttc_lidar src/compute_ttc_lidar.cpp src/structIO.cpp)
-target_link_libraries (compute_ttc_lidar ${OpenCV_LIBRARIES})
+# Executables for exercise
+add_executable (detect_keypoints src/detect_keypoints.cpp)
+target_link_libraries (detect_keypoints ${OpenCV_LIBRARIES})
